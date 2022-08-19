@@ -2,7 +2,7 @@ import builtins
 from itertools import count
 
 
-hl_groups = {}
+hl_groups: dict = {}
 
 def group(s):
     label = 'semshi' + s[0].capitalize() + s[1:]
@@ -54,9 +54,14 @@ class Node:
             try:
                 self.symbol = self.env[-1].lookup(self.symname)
             except KeyError:
-                # Set dummy hl group, so all fields in __repr__ are defined.
-                self.hl_group = '?'
-                raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
+                if self.symname in builtins:
+                    hl_group = BUILTIN
+                    self.symbol = None
+                else:
+                    # Set dummy hl group, so all fields in __repr__ are defined.
+                    self.hl_group = '?'
+                    self.symbol = None
+                    # raise Exception('%s can\'t lookup "%s"' % (self, self.symname))
         if hl_group is not None:
             self.hl_group = hl_group
         else:
@@ -89,7 +94,9 @@ class Node:
 
     def _make_hl_group(self):
         """Return highlight group the node belongs to."""
-        sym = self.symbol
+        if not (sym:= self.symbol):
+            return IMPORTED
+
         name = self.name
         if sym.is_parameter():
             table = self.env[-1]
@@ -164,6 +171,8 @@ class Node:
         """
         if self.hl_group == ATTRIBUTE:
             return self.env[-1]
+        if not self.symbol:
+            return None
         if self.symbol.is_global():
             return self.env[0]
         if self.symbol.is_local() and not self.symbol.is_free():
